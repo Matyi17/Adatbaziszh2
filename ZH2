@@ -1,1 +1,151 @@
 ZH2
+
+
+1
+Egy online filmkölcsönző alkalmazáshoz használt relációs adatbázis ami 3 táblával rendelkezik:
+1.	Filmek:
+○	film_id (főkulcs)
+○	cím
+○	műfaj
+○	megjelenés
+○	rendező
+○	hossz
+2.	Kölcsönzések:
+○	kölcsönzés_id (főkulcs)
+○	film_id (idegen kulcs, hivatkozik a Filmek táblára)
+○	felh.azonosító (idegen kulcs, hivatkozik a Felhasználók táblára)
+○	kölcsönzés_dátuma
+○	visszaviteli_dátuma
+3.	Felhasználók:
+○	felh.azonosító (főkulcs)
+○	név
+○	tagsági_típus
+Neo4j lekérdezések:
+1.	Minden idők legnépszerűbb filmje:
+
+MATCH (film:Film)-[:Kölcsönözte]->(felh:Felhasználó)
+WITH film, count(*) AS kölcsönzések
+ORDER BY kölcsönzések DESC
+LIMIT 1
+RETURN film.cím AS cím, film.műfaj AS műfaj, kölcsönzések
+
+2.	Egy adott műfajban elérhető filmek:
+
+MATCH (film:Film) WHERE film.műfaj = {műfaj}
+RETURN film.cím AS cím, film.rendező AS rendező
+
+3.	Egy adott felhasználó által kölcsönzött filmek:
+
+MATCH (felh:Felhasználó {felh.azonosító = {felhasználó_azonosító}})-[:Kölcsönözte]->(film:Film)
+RETURN film.cím AS cím, film.műfaj AS műfaj, film.megjelenés AS megjelenés
+
+4.	Kölcsönzésben lévő filmek:
+
+MATCH (film:Film)-[:Kölcsönözte]->(:Felhasználó)
+WHERE film.visszaviteli_dátuma IS NULL
+RETURN film.cím AS cím, film.műfaj AS műfaj
+
+5.	Kölcsönzési előzmények egy adott felhasználó számára:
+
+MATCH (felh:Felhasználó {felh.azonosító = {felhasználó_azonosító}})-[:Kölcsönözte]->(film:Film)
+RETURN film.cím AS cím, film.műfaj AS műfaj, film.kölcsönzés_dátuma AS kölcsönzés_dátuma, film.visszaviteli_dátuma AS visszaviteli_dátuma
+
+GitHub link:
+●	https://github.com/Matyi17/Adatbaziszh2
+
+
+
+
+
+
+2
+
+
+
+•	műfaj: A film műfaja
+•	megjelenés: A film megjelenési dátuma
+•	rendező: A film rendezője
+•	hossz: A film hossza percben
+Adatbázis létrehozása:
+
+Python
+
+import neo4j
+
+# Csatlakozás a Neo4j adatbázishoz
+driver = neo4j.Driver("bolt://localhost:7687", auth=("neo4j", "password"))
+session = driver.session()
+
+# Filmek csomóponttípus létrehozása
+session.run("""
+CREATE (film:Film {
+  cím: {cím},
+  műfaj: {műfaj},
+  megjelenés: {megjelenés},
+  rendező: {rendező},
+  hossz: {hossz}
+})
+""")
+
+
+Lekérdezések:
+1.	Minden film lekérdezése:
+
+Python
+
+eredmények = session.run("""
+MATCH (film:Film)
+RETURN film.cím AS cím, film.műfaj AS műfaj, film.megjelenés AS megjelenés, film.rendező AS rendező, film.hossz AS hossz
+""")
+
+for film in eredmények:
+  print(f"Cím: {film['cím']}")
+  print(f"Műfaj: {film['műfaj']}")
+  print(f"Megjelenés: {film['megjelenés']}")
+  print(f"Rendező: {film['rendező']}")
+  print(f"Hossz: {film['hossz']}")
+  print("----")
+
+
+2.	Egy adott műfajban elérhető filmek lekérdezése:
+
+Python
+
+műfaj = "Sci-Fi"
+
+eredmények = session.run(f"""
+MATCH (film:Film) WHERE film.műfaj = {műfaj}
+RETURN film.cím AS cím, film.rendező AS rendező
+""")
+
+for film in eredmények:
+  print(f"Cím: {film['cím']}")
+  print(f"Rendező: {film['rendező']}")
+  print("----")
+
+
+3.	Egy adott film lekérdezése a cím alapján:
+
+Python
+
+cím = "Star Wars: Episode IV - A New Hope"
+
+eredmény = session.run(f"""
+MATCH (film:Film) WHERE film.cím = {cím}
+RETURN film.cím AS cím, film.műfaj AS műfaj, film.megjelenés AS megjelenés, film.rendező AS rendező, film.hossz AS hossz
+LIMIT 1
+""")
+
+film = eredmények.single()
+
+if film:
+  print(f"Cím: {film['cím']}")
+  print(f"Műfaj: {film['műfaj']}")
+  print(f"Megjelenés: {film['megjelenés']}")
+  print(f"Rendező: {film['rendező']}")
+  print(f"Hossz: {film['hossz']}")
+else:
+  print(f"Nem talált film a {cím} címmel.")
+
+
+
